@@ -32,13 +32,15 @@
  */
 #include "LPAnalyzer.h"
 
+
 /**
  * @brief Calc Autocorrelation function
  * @param [in]  InputData[u32NumOfSamples] Input Samples
  * @param [in]  u32NumOfSamples Number Of Samples
  * @param [in]  dfpWork[u32NumOfSamples] Work Buffer
  * @param [out]  OutputData[u32NumOfSamples] Output Samples
- * @return void
+ * @return true OK
+ * @return false NG
  */
 _Bool CalcAutocorrelation(const double InputData[], uint32_t u32NumOfSamples, double dfpWork[], double OutputData[])
 {
@@ -47,10 +49,11 @@ _Bool CalcAutocorrelation(const double InputData[], uint32_t u32NumOfSamples, do
 	double sum;
 
 	/*-- begin --*/
-	if((InputData == NULL) ||
+	if ((InputData == NULL) ||
 		(dfpWork == NULL) ||
-		(OutputData == NULL)){
-			return false;
+		(OutputData == NULL))
+	{
+		return false;
 	}
 	sum = 0.0;
 	/** TODO :Loop Unrolling */
@@ -82,24 +85,14 @@ _Bool CalcAutocorrelation(const double InputData[], uint32_t u32NumOfSamples, do
 	return true;
 }
 
-
-/*====================================*/
-/*==     相互相関関数を計算する     ==*/
-/*==        mcrossを少し改編        ==*/
-/*====================================*/
-/*== hdata   : インパルス応答(入力) ==*/
-/*== xdata   : 原信号(入力)         ==*/
-/*== XS      : 配列長(入力)         ==*/
-/*== Rhx     : 自己相関関数(出力)   ==*/
-/*====================================*/
-//void C_COR_2(double *hdata, double *xdata, int XS, double *Rhx)
 /**
- * @brief Calc Autocorrelation function
+ * @brief Calc Crosscorrelation function
  * @param [in]  InputData[u32NumOfSamples] Input Impulse Response
  * @param [in]  InputSamples[u32NumOfSamples] Input Samples
  * @param [in]  u32NumOfSamples Number Of Samples
  * @param [out]  OutputData[u32NumOfSamples] Output Samples
- * @return void
+ * @return true OK
+ * @return false NG
  */
 _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSamples[], uint32_t u32NumOfSamples, double OutputData[])
 {
@@ -107,6 +100,13 @@ _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSample
 	double temp;
 
 	/*-- begin --*/
+	if ((InputImpulse == NULL) ||
+		(InputSamples == NULL) ||
+		(OutputData == NULL))
+	{
+		return false;
+	}
+
 	for (uint32_t i = 0; i < u32NumOfSamples; i++)
 	{
 		temp = 0.0;
@@ -116,20 +116,10 @@ _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSample
 		}
 		OutputData[i] = temp / (double)u32NumOfSamples;
 	}
+
+	return true;
 }
 
-/*======================================*/
-/*==         塩原のプログラム         ==*/
-/*== レビンソンアルゴリズム AIC無し   ==*/
-/*==  Levinson Durbin  Method  ==*/
-/*======================================*/
-/*== Rxx     : 自己相関関数(入力)     ==*/
-/*== XS      : 配列長(入力)           ==*/
-/*== KP      : PARCOR係数(出力)       ==*/
-/*== alpha   : 線形予測係数(出力)     ==*/
-/*== ARorder : AR次数(入力)           ==*/
-/*======================================*/
-//void LevinsonDurbinMethod (double *Rxx, uint32_t u32NumOfSamples, double alpha[], uint32_t ARorder)
 /**
  * @brief LevinsonDurbinMethod
  * @param [in]  AutoCor[u32NumOfSamples] Input Autocorrelation
@@ -137,15 +127,14 @@ _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSample
  * @param [in]  WorkBuffer[10 * u32NumOfSamples] Work Buffer
  * @param [out]  alpha[ARorder + 1] AR value
  * @param [in]  ARorder Number Of AR
- * @return void
+ * @return true OK
+ * @return false NG
  */
-void LevinsonDurbinMethod (const double AutoCor[], uint32_t u32NumOfSamples, 
-							double WorkBuffer[], double alpha[], uint32_t ARorder)
+_Bool LevinsonDurbinMethod(const double AutoCor[], uint32_t u32NumOfSamples, double WorkBuffer[], double alpha[], uint32_t ARorder)
 {
 	/*-- var --*/
-	int i, n;
 	double *a, *b, *w, *u, *PARCOR;
-	uint32_t WorkBufferSize = 2*u32NumOfSamples;
+	uint32_t WorkBufferSize = 2 * u32NumOfSamples;
 
 	/*-- cast --*/
 	a = &WorkBuffer[0 * WorkBufferSize];
@@ -175,7 +164,7 @@ void LevinsonDurbinMethod (const double AutoCor[], uint32_t u32NumOfSamples,
 
 		if (n == ARorder - 1)
 		{
-			for (i = 0; i <= ARorder; i++)
+			for (uint32_t i = 0; i <= ARorder; i++)
 			{
 				alpha[i] = a[i];
 			}
@@ -193,19 +182,10 @@ void LevinsonDurbinMethod (const double AutoCor[], uint32_t u32NumOfSamples,
 			b[i] = a[i];
 		}
 	}
+
+	return true;
 }
 
-/*====================================*/
-/*== procedure : IPR                ==*/
-/*====================================*/
-/*==         塩原のプログラム       ==*/
-/*== AR係数からインパルス応答の生成 ==*/
-/*====================================*/
-/*== alpha   : 線形予測係数(入力)   ==*/
-/*== ARorder : AR次数(入力)         ==*/
-/*== XS      : 配列長(入力)         ==*/
-/*== hdata   : インパルス応答(出力) ==*/
-/*====================================*/
 /**
  * @brief GetImpulseResponse
  * @param [in]  alpha[ARorder + 1] AR value
@@ -214,7 +194,7 @@ void LevinsonDurbinMethod (const double AutoCor[], uint32_t u32NumOfSamples,
  * @param [out]  ImpulseResponse[u32NumOfSamples] Impulse Response
  * @return void
  */
-void GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32NumOfSamples, double ImpulseResponse[])
+_Bool GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32NumOfSamples, double ImpulseResponse[])
 {
 	/*-- var --*/
 	double temp;
@@ -235,24 +215,31 @@ void GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32NumO
 		}
 		ImpulseResponse[i] = temp;
 	}
+
+	return true;
 }
 
-void I_filter(double *xdata,double *alpha,double *LP_E,
-	      int XS,int ARorder)
+/**
+ * @brief LPC
+ * @param [in]  InputImpulse[u32NumOfSamples] Multi-pulse
+ * @param [in]  alpha[ARorder]
+ * @param [in]  u32NumOfSamples Number Of Samples
+ * @param [out]  OutputSignals[u32NumOfSamples] OutputSignals
+ * @return void
+ */
+_Bool LPC(const double InputImpulse[], const double alpha[], double OutputSignals[], uint32_t u32NumOfSamples, uint32_t ARorder)
 {
-  /*-- var --*/
-  double  temp1;
-  int  i,n;
-
-  /*-- begin --*/
-  for(n=0;n<XS;n++)
-    {
-      temp1 = 0.0;
-      for(i=1;i<=ARorder;i++)
+	for (uint32_t n = 0; n < u32NumOfSamples; n++)
 	{
-	  if(n == i-1)  break;
-	  temp1 = temp1 - alpha[i]* xdata[n-i];
+		double temp1 = 0.0;
+		for (uint32_t i = 1; i <= ARorder; i++)
+		{
+			if (n == (i - 1))
+			{
+				break;
+			}
+			temp1 = temp1 - alpha[i] * InputImpulse[n - i];
+		}
+		OutputSignals[n] = InputImpulse[n] - temp1;
 	}
-      LP_E[n] = xdata[n] - temp1;
-    }  
 }

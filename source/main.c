@@ -27,9 +27,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
  * DEALINGS IN THE SOFTWARE.
  */
-#include "mimiclib.h"
-
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#if 0
 static double EvalChebyshev(
     double x,   /* (i) 入力値(x = \cos(frequency)) */
     int n,      /* (i) fの最大有効インデックス（線形予測次数の半分） */
@@ -218,9 +221,35 @@ void LSPAnalyser(double dfpInput[], uint32_t u32NumberOfSamples, uint32_t Number
 	C_COR_2(hwdata, InpulseResponse, u32NumberOfSamples, Rhx);
 	PS6_3(Rhx, Rhh, u32NumberOfSamples, NumberOfPulses, PL, PA);
 }
+#endif
 
 int main(int argc, char *argv[])
 {
-	UnitTeset();
+	char szInputWavFile[256];
+	char szOutputWavFile[256];
+
+	for(uint32_t i= 1;i< argc;){
+		if(argv[i][0] == '-'){
+			switch(argv[i][1]){
+			case 'i':
+				i++;
+				strcpy(szInputWavFile, argv[i]);
+				i++;
+				printf("InputFile : <%s>\r\n",szInputWavFile);
+				break;
+			case 'o':
+				i++;
+				strcpy(szOutputWavFile, argv[i]);
+				i++;
+				printf("OutputFile : <%s>\r\n",szOutputWavFile);
+				break;
+			default:
+				i++;
+				break;
+			}
+		}else{
+			i++;
+		}
+	}
 	return 0;
 }
