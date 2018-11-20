@@ -32,6 +32,11 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "wav/wav.h"
+#include "LPC/LPAnalyzer.h"
+
+
 #if 0
 static double EvalChebyshev(
     double x,   /* (i) 入力値(x = \cos(frequency)) */
@@ -223,6 +228,22 @@ void LSPAnalyser(double dfpInput[], uint32_t u32NumberOfSamples, uint32_t Number
 }
 #endif
 
+static void get_alpha(int16_t pi16Buffer[], uint32_t u32SampleCnt){
+	double *pInputData = malloc(sizeof(double)*u32SampleCnt);
+	double *pAutoCorData = malloc(sizeof(double)*u32SampleCnt);
+	double *pWorkData = malloc(sizeof(double)*u32SampleCnt * 10);
+	double alpha[17] = {0};
+	for(uint32_t i=0;i<u32SampleCnt;i++){
+		pInputData[i] = pi16Buffer[i];
+	}
+	CalcAutocorrelation(pInputData, u32SampleCnt, pWorkData, pAutoCorData);
+	LevinsonDurbinMethod(pAutoCorData, u32SampleCnt, pWorkData, alpha, 16);
+	for(uint32_t i=0;i<17;i++){
+		printf("%f ", alpha[i]);
+	}
+	printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
 	char szInputWavFile[256];
@@ -251,5 +272,42 @@ int main(int argc, char *argv[])
 			i++;
 		}
 	}
+	stFmtChunk_t stFmtChunk;
+
+	if(WavFileGetFmtChunk(szInputWavFile, &stFmtChunk) == false){
+		printf("[%s (%d)] WavFileGetFmtChunk NG\n", __FUNCTION__, __LINE__);
+		return 0;
+	}
+
+	printf("stFmtChunk.u16waveFormatType = %u\n", stFmtChunk.u16waveFormatType);
+	printf("stFmtChunk.u16formatChannel  = %u\n", stFmtChunk.u16formatChannel);
+	printf("stFmtChunk.u32samplesPerSec  = %lu\n", stFmtChunk.u32samplesPerSec);
+	printf("stFmtChunk.u32bytesPerSec    = %lu\n", stFmtChunk.u32bytesPerSec);
+	printf("stFmtChunk.u16blockSize      = %u\n", stFmtChunk.u16blockSize);
+	printf("stFmtChunk.u16bitsPerSample  = %u\n", stFmtChunk.u16bitsPerSample);
+
+	uint32_t u32ChunkSize;
+	stWaveFile_t *fp = WavFileSearchTopOfDataChunk(szInputWavFile, &u32ChunkSize);
+
+	if(fp == NULL){
+		printf("[%s (%d)] WavFileGetFmtChunk NG\n", __FUNCTION__, __LINE__);
+		return 0;
+	}
+	printf("[%s (%d)] u32ChunkSize = %lu bytes\n", __FUNCTION__, __LINE__, u32ChunkSize);
+
+	for(;;){
+		uint8_t u8Buffer[96000*2];
+		uint32_t u32BufferSize = stFmtChunk.u32samplesPerSec * stFmtChunk.u16formatChannel * stFmtChunk.u16bitsPerSample / 8;
+		u32BufferSize /= 50;	/** 100 msec */
+		uint64_t br = WavFileGetPCMData(fp, &u32ChunkSize, u8Buffer, u32BufferSize);
+
+		if(br == 0){
+			break;
+		}
+		printf("[%s (%d)] %lu bytes read OK (Remain = %lu)\n", __FUNCTION__, __LINE__, br, u32ChunkSize);
+		get_alpha(u8Buffer, br);
+	}
+
+	WavFileClose(fp);
 	return 0;
 }
