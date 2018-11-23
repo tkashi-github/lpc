@@ -50,7 +50,8 @@ extern _Bool CalcAutocorrelation(const double InputData[], uint32_t u32NumOfSamp
 extern _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSamples[], uint32_t u32NumOfSamples, double OutputData[]);
 extern _Bool LevinsonDurbinMethod(const double AutoCor[], uint32_t u32NumOfSamples, double WorkBuffer[], double alpha[], uint32_t ARorder);
 extern _Bool GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32NumOfSamples, double ImpulseResponse[]);
-extern _Bool LPC(const double InputImpulse[], const double alpha[], double OutputSignals[], uint32_t u32NumOfSamples, uint32_t ARorder);
+extern void I_filter(const double dfpInData[], const double dfpAlpha[], double dfpOutput[], uint32_t u32SampleCnt, uint32_t ARorder);
+
 
 #ifdef __cplusplus
 }

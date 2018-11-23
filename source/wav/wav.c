@@ -22,6 +22,10 @@ static inline size_t wav_fread(void *buf, size_t size, size_t n, stWaveFile_t *f
 {
 	return fread(buf, size, n, (FILE*)fp);
 }
+static inline size_t wav_fwrite(const void *buf, size_t size, size_t n, stWaveFile_t *fp)
+{
+	return fwrite(buf, size, n, (FILE*)fp);
+}
 static inline int32_t wav_feof(stWaveFile_t *fp){
 	return (int32_t)feof((FILE*)fp);
 }
@@ -209,4 +213,77 @@ uint64_t WavFileGetPCMData(stWaveFile_t *fp, uint32_t *pu32RemainChunkSize, uint
 
 void WavFileClose(stWaveFile_t *fp){
 	wav_fclose(fp);
+}
+
+stWaveFile_t *WavFileWriteFmtChunk(const char szFilePath[], const stFmtChunk_t *pstFmtChunk){
+	stWaveFile_t *fp;
+
+	fp = wav_fopen(szFilePath, "wb");
+	if (fp == NULL)
+	{
+		return NULL;
+	}
+	stHdrWriteChunk_t stHdr;
+	memcpy(stHdr.u8chunkID, "RIFF", 4);
+	memcpy(stHdr.chunkFormType, "WAVE", 4);
+	if(sizeof(stHdr) != wav_fwrite(&stHdr, 1, sizeof(stHdrWriteChunk_t), fp)){
+		wav_fclose(fp);
+		return NULL;
+	}
+	stHdrChunk_t stHdrFmtChuk;
+	memcpy(stHdrFmtChuk.u8chunkID, "fmt ", 4);
+	stHdrFmtChuk.u32chunkSize = sizeof(stHdrWriteChunk_t) + 4;
+	if(sizeof(stHdrChunk_t) != wav_fwrite(&stHdrFmtChuk, 1, sizeof(stHdrChunk_t), fp)){
+		wav_fclose(fp);
+		return NULL;
+	}
+	if(sizeof(stFmtChunk_t) != wav_fwrite(pstFmtChunk, 1, sizeof(stFmtChunk_t), fp)){
+		wav_fclose(fp);
+		return NULL;
+	}
+	stHdrChunk_t stHdrDataChunk;
+	memcpy(stHdrDataChunk.u8chunkID, "data", 4);
+	stHdrDataChunk.u32chunkSize = 0;
+	if(sizeof(stHdrDataChunk) != wav_fwrite(&stHdrDataChunk, 1, sizeof(stHdrDataChunk), fp)){
+		wav_fclose(fp);
+		return NULL;
+	}
+	return fp;
+
+}
+
+uint64_t WavFileWritePCMData(stWaveFile_t *fp, const uint8_t pu8Buffer[], uint32_t u32BufferSize, uint32_t *pu32DataChunkSize){
+	uint64_t ret;
+
+	ret = wav_fwrite(pu8Buffer, 1, u32BufferSize, fp);
+	*pu32DataChunkSize += ret;
+	return ret; 
+}
+
+void WavFileWriteClose(stWaveFile_t *fp, uint32_t u32DataChunkSize)
+{
+	if (wav_fseek(fp, 40, SEEK_SET) != 0)
+	{
+		wav_printf("[%s (%d)] wav_fseek NG\n", __FUNCTION__, __LINE__);
+		wav_fclose(fp);
+		return;
+	}
+	if(sizeof(uint32_t) != wav_fwrite((void*)&u32DataChunkSize, 1, sizeof(uint32_t), fp)){
+		wav_printf("[%s (%d)] wav_fwrite NG\n", __FUNCTION__, __LINE__);
+		wav_fclose(fp);
+		return;
+	}
+	u32DataChunkSize += 36;
+
+	if (wav_fseek(fp, 4, SEEK_SET) != 0)
+	{
+		wav_printf("[%s (%d)] wav_fseek NG\n", __FUNCTION__, __LINE__);
+		wav_fclose(fp);
+		return;
+	}
+	if(sizeof(uint32_t) != wav_fwrite((void*)&u32DataChunkSize, 1, sizeof(uint32_t), fp)){
+		wav_printf("[%s (%d)] wav_fwrite NG\n", __FUNCTION__, __LINE__);
+		wav_fclose(fp);
+		return;
+	}
 }

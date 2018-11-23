@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.encoding": "utf8",
+		"c-cpp-flylint.clang.standard": [
+			"c11"
+		],
+		"clang.cxxflags": [
+			"--std=c++11"
+		],
+		"clang.cflags": [
+			"--std=c11"
+		],
+		"C_Cpp.default.includePath": [
+			"${workspaceFolder}/",
+			"${workspaceFolder}/source",
+			"${workspaceFolder}/source/LPC",
+			"${workspaceFolder}/source/wav",
+		],
+		"files.associations": {
+		},
+		"C_Cpp.default.defines": [
+			"__GNUC__",
+			"DEBUG",
+			"WIN_TEST"
+		],
+	}
+}

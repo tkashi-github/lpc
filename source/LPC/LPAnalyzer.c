@@ -32,7 +32,6 @@
  */
 #include "LPAnalyzer.h"
 
-
 /**
  * @brief Calc Autocorrelation function
  * @param [in]  InputData[u32NumOfSamples] Input Samples
@@ -219,27 +218,23 @@ _Bool GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32Num
 	return true;
 }
 
-/**
- * @brief LPC
- * @param [in]  InputImpulse[u32NumOfSamples] Multi-pulse
- * @param [in]  alpha[ARorder]
- * @param [in]  u32NumOfSamples Number Of Samples
- * @param [out]  OutputSignals[u32NumOfSamples] OutputSignals
- * @return void
- */
-_Bool LPC(const double InputImpulse[], const double alpha[], double OutputSignals[], uint32_t u32NumOfSamples, uint32_t ARorder)
+void I_filter(const double dfpInData[], const double dfpAlpha[], double dfpOutput[], uint32_t u32SampleCnt, uint32_t ARorder)
 {
-	for (uint32_t n = 0; n < u32NumOfSamples; n++)
+	/*-- var --*/
+
+	/*-- begin --*/
+	for (uint32_t n = 0; n < u32SampleCnt; n++)
 	{
-		double temp1 = 0.0;
+		double temp1;
+		temp1 = 0.0;
 		for (uint32_t i = 1; i <= ARorder; i++)
 		{
-			if (n == (i - 1))
+			if (n == i - 1)
 			{
 				break;
 			}
-			temp1 = temp1 - alpha[i] * InputImpulse[n - i];
+			temp1 = temp1 - dfpAlpha[i] * dfpInData[n - i];
 		}
-		OutputSignals[n] = InputImpulse[n] - temp1;
+		dfpOutput[n] = dfpInData[n] - temp1;
 	}
 }

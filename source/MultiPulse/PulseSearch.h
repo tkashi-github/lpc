@@ -10,7 +10,7 @@
  * --
  * Copyright 2018 Takashi Kashiwagi
  * 
- * Permission is hereby granted, free of uint8_tge, to any person obtaining a 
+ * Permission is hereby granted, free of charge, to any person obtaining a 
  * copy of this software and associated documentation files (the "Software"), 
  * to deal in the Software without restriction, including without limitation 
  * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
@@ -40,66 +40,16 @@
 extern "C"
 {
 #endif
-#ifdef WIN_TEST
 #include <stdio.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#pragma pack(1)  
-typedef struct
-{
-    uint8_t  u8chunkID[4];
-    uint32_t u32chunkSize;
-} stHdrChunk_t;
+#include <math.h>
 
-#pragma pack(1)  
-typedef struct
-{
-    uint8_t  chunkFormType[4];
-} stRiffChunk_t;
-
-#pragma pack(1)  
-typedef struct
-{
-    uint16_t u16waveFormatType;
-    uint16_t u16formatChannel;
-    uint32_t u32samplesPerSec;
-    uint32_t u32bytesPerSec;
-    uint16_t u16blockSize;
-    uint16_t u16bitsPerSample;
-} stFmtChunk_t;
-
-#ifdef WIN_TEST
-typedef FILE stWaveFile_t;
-#elif defined(FATFS)
-typedef FIL stWaveFile_t;
-#else
-#error Unkown Env
-#endif
-
-extern _Bool WavFileGetFmtChunk(const char szFilePath[], stFmtChunk_t *pstFmtChunk);
-extern stWaveFile_t *WavFileSearchTopOfDataChunk(const char szFilePath[], uint32_t *pu32ChunkSize);
-extern uint64_t WavFileGetPCMData(stWaveFile_t *fp, uint32_t *pu32RemainChunkSize, uint8_t pu8Buffer[], uint32_t u32BufferSize);
-extern void WavFileClose(stWaveFile_t *fp);
-
-
-#pragma pack(1)  
-typedef struct
-{
-    uint8_t  u8chunkID[4];
-    uint32_t u32chunkSize;
-	uint8_t  chunkFormType[4];
-} stHdrWriteChunk_t;
-
-extern stWaveFile_t *WavFileWriteFmtChunk(const char szFilePath[], const stFmtChunk_t *pstFmtChunk);
-extern uint64_t WavFileWritePCMData(stWaveFile_t *fp, const uint8_t pu8Buffer[], uint32_t u32BufferSize, uint32_t *pu32DataChunkSize);
-extern void WavFileWriteClose(stWaveFile_t *fp, uint32_t u32DataChunkSize);
-
+extern _Bool PulseSerch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCnt, uint32_t u32NumOfPulses, double Pulses[]);
 
 #ifdef __cplusplus
 }
 #endif
-
