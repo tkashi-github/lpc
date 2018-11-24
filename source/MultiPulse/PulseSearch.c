@@ -32,19 +32,20 @@
  */
 #include "PulseSearch.h"
 
-
-_Bool PulseSerch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCnt, uint32_t u32NumOfPulses, double Pulses[])
+_Bool PulseSearch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCnt, uint32_t u32NumOfPulses, double Pulses[])
 {
 	/*-- var --*/
 	uint32_t k;
 	double rmax;
-	double *tCrossCor = (double*)malloc(sizeof(double)*u32SampleCnt);
-	_Bool *bIsPulseExist = (_Bool*)malloc(sizeof(_Bool)*u32SampleCnt); /* その位置にパルスが立っているか */
+	double *tCrossCor = (double *)malloc(sizeof(double) * u32SampleCnt);
+	_Bool *bIsPulseExist = (_Bool *)malloc(sizeof(_Bool) * u32SampleCnt); /* その位置にパルスが立っているか */
 
-	if(tCrossCor == NULL){
+	if (tCrossCor == NULL)
+	{
 		return false;
 	}
-	if(bIsPulseExist == NULL){
+	if (bIsPulseExist == NULL)
+	{
 		free(tCrossCor);
 		return false;
 	}
@@ -57,49 +58,46 @@ _Bool PulseSerch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCn
 	}
 
 	k = 1;
-	for (;;)
+	while (k <= u32NumOfPulses)
 	{
 		int32_t i32PulsePos = -1;
 		rmax = 0.0;
-		
+
 		for (uint32_t j = 0; j < u32SampleCnt; ++j)
 		{
+			if (bIsPulseExist[j])
+			{
+				continue;
+			}
 			if (rmax < fabs(tCrossCor[j]))
 			{
-				i32PulsePos= j;
+
+				i32PulsePos = j;
 				rmax = fabs(tCrossCor[j]);
 			}
 		}
-		if(i32PulsePos < 0){
-			break;
-		}
-
-		if(bIsPulseExist[i32PulsePos] == false)
+		if (i32PulsePos < 0)
 		{
-			bIsPulseExist[i32PulsePos] = true;
-			
-
-			if (k >= u32NumOfPulses)
-			{
-				break;
-			}
+			printf("Not found\n");
+			break;
 		}
 
 		
-		if(fabs(tCrossCor[i32PulsePos] / AutoCor[0]) < 1){
-			break;
-		}
-		Pulses[k] += tCrossCor[i32PulsePos] / AutoCor[0];
+		bIsPulseExist[i32PulsePos] = true;
+
+		
+
+
+		Pulses[i32PulsePos] = tCrossCor[i32PulsePos] / AutoCor[0];
+		//printf("Pulses[%d] = %f\n", k, Pulses[k]);
 		for (uint32_t j = 0; j < u32SampleCnt; ++j)
 		{
-			tCrossCor[j] -= Pulses[k] * AutoCor[abs(j - i32PulsePos)];
+			tCrossCor[j] -= Pulses[i32PulsePos] * AutoCor[abs(j - i32PulsePos)];
 		}
 		++k;
 	}
 
 	free(tCrossCor);
 	free(bIsPulseExist);
-	return  true;
+	return true;
 }
-
-

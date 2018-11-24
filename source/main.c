@@ -130,13 +130,13 @@ int main(int argc, char *argv[])
 		//printf("[%s (%d)] %lu bytes read OK (Remain = %lu)\n", __FUNCTION__, __LINE__, br, u32ChunkSize);
 		{
 			uint32_t u32SampleCnt = br / sizeof(uint16_t);
-			//printf("[%s (%d)] u32SampleCnt = %lu)\n", __FUNCTION__, __LINE__, u32SampleCnt);
+			printf("[%s (%d)] u32SampleCnt = %lu)\n", __FUNCTION__, __LINE__, u32SampleCnt);
 			if(u32SampleCnt <= 3840){
 				double AutoCross[3840];
 				double pInputData[3840];
 				double pWorkData[3840*10];
-				double dfpLPC[DEF_AR_ODER];
-				double dfpLSP[DEF_AR_ODER];
+				double dfpLPC[DEF_AR_ODER + 1];	/** 最初の 1.0 と16 */
+				double dfpLSP[DEF_AR_ODER + 1];
 				double Corcor[3840];
 				double ImpulseResponse[3840];
 				int16_t *pi16 = u8Buffer;
@@ -154,11 +154,14 @@ int main(int argc, char *argv[])
 				printf("\n");
 #endif
 				LevinsonDurbinMethod(AutoCross, u32SampleCnt, pWorkData, dfpLPC, DEF_AR_ODER);
+				//lpc(pInputData, u32SampleCnt, dfpLPC, DEF_AR_ODER, 1e-6);
 #if 0
-				for(uint32_t i=0;i<DEF_AR_ODER;i++){
+				for(uint32_t i=0;i<(DEF_AR_ODER + 1);i++){
 					printf("%f ", dfpLPC[i]);
 				}
 				printf("\n");
+#endif
+#if 0
 				lpc2lsp(dfpLPC, dfpLSP, DEF_AR_ODER, 128, 4, 1e-6);
 				for(uint32_t i=0;i<DEF_AR_ODER;i++){
 					printf("%f ", dfpLSP[i]);
@@ -169,12 +172,18 @@ int main(int argc, char *argv[])
 					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
 					break;
 				}
+#if 0
+				for(uint32_t i=0;i<u32SampleCnt;i++){
+					printf("%f,", ImpulseResponse[i]);
+				}
+				printf("\n\n");
+#endif	
 				CalcAutocorrelation(ImpulseResponse, u32SampleCnt, pWorkData, AutoCross);
 #if 0
 				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f ", ImpulseResponse[i]);
+					printf("%f,", AutoCross[i]);
 				}
-				printf("\n");
+				printf("\n\n");
 #endif				
 				if(CalcCrosscorrelation(ImpulseResponse, pInputData, u32SampleCnt, Corcor) == false){
 					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
@@ -188,7 +197,7 @@ int main(int argc, char *argv[])
 				printf("\n");
 #endif
 				double Pulses[3840];
-				if(PulseSerch(AutoCross, Corcor, u32SampleCnt,  u32SampleCnt / 4, Pulses) == false){
+				if(PulseSearch(AutoCross, Corcor, u32SampleCnt,  u32SampleCnt / 4, Pulses) == false){
 					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
 					break;
 				}
@@ -200,7 +209,7 @@ int main(int argc, char *argv[])
 #endif
 
 				double dfpOutPutData[3840];	
-				I_filter(Pulses, dfpLPC, dfpOutPutData, u32SampleCnt, DEF_AR_ODER);
+				I_filter_2(Pulses, dfpLPC, dfpOutPutData, u32SampleCnt, DEF_AR_ODER);
 				
 				int16_t i16data[3840];
 				for(uint32_t i=0;i<u32SampleCnt;i++){

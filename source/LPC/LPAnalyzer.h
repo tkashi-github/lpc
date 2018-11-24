@@ -51,6 +51,7 @@ extern _Bool CalcCrosscorrelation(const double InputImpulse[], const double Inpu
 extern _Bool LevinsonDurbinMethod(const double AutoCor[], uint32_t u32NumOfSamples, double WorkBuffer[], double alpha[], uint32_t ARorder);
 extern _Bool GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32NumOfSamples, double ImpulseResponse[]);
 extern void I_filter(const double dfpInData[], const double dfpAlpha[], double dfpOutput[], uint32_t u32SampleCnt, uint32_t ARorder);
+extern void I_filter_2(const double dfpInData[], const double dfpAlpha[], double dfpOutput[], uint32_t u32SampleCnt, uint32_t ARorder);
 
 
 #ifdef __cplusplus

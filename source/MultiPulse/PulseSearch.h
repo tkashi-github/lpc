@@ -48,7 +48,7 @@ extern "C"
 
 #include <math.h>
 
-extern _Bool PulseSerch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCnt, uint32_t u32NumOfPulses, double Pulses[]);
+extern _Bool PulseSearch(const double AutoCor[], double CrossCor[], uint32_t u32SampleCnt, uint32_t u32NumOfPulses, double Pulses[]);
 
 #ifdef __cplusplus
 }
