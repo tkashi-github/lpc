@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 project(mimiclib_unit_test C)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -lm -I./include -I./source/SPTK/include -I./source/MultiPulse -Wall -std=c11 -DWIN_TEST")
-add_executable(lsp_test.exe
+add_executable(mp_encode.exe
   ./source/main.c
   ./source/LPC/LPAnalyzer.c
   ./source/wav/wav.c

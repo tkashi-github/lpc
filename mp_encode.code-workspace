@@ -22,7 +22,8 @@
 			"${workspaceFolder}/source/wav",
 		],
 		"files.associations": {
-
+			"pulsesearch.h": "c",
+			"lpanalyzer.h": "c"
 		},
 		"C_Cpp.default.defines": [
 			"__GNUC__",

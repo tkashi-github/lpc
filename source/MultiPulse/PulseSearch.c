@@ -89,7 +89,7 @@ _Bool PulseSearch(const double AutoCor[], double CrossCor[], uint32_t u32SampleC
 
 
 		Pulses[i32PulsePos] = tCrossCor[i32PulsePos] / AutoCor[0];
-		//printf("Pulses[%d] = %f\n", k, Pulses[k]);
+		//printf("Pulses[%d] = %f\n", k, Pulses[i32PulsePos]);
 		for (uint32_t j = 0; j < u32SampleCnt; ++j)
 		{
 			tCrossCor[j] -= Pulses[i32PulsePos] * AutoCor[abs(j - i32PulsePos)];
