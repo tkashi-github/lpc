@@ -43,6 +43,105 @@
 #include "LPC/LPAnalyzer.h"
 #include "SPTK.h"
 
+#define DEF_MAX_SAMPLE_RATE (192000u) /** 192KHz */
+#define DEF_FRAME_LENGTH_MSEC (40u)   /** 20msec */
+
+#define DEF_NUM_OF_FRAME_PER_SEC (1000u / DEF_FRAME_LENGTH_MSEC)
+#define DEF_MAX_SAMPLES_PER_FRAME (DEF_MAX_SAMPLE_RATE / DEF_NUM_OF_FRAME_PER_SEC)
+
+void WF(double xdata[], double alpha[], uint32_t u32SampleCnt, uint32_t ARorder, double gamma)
+{
+	/*-- var --*/
+	double qdata[DEF_MAX_SAMPLES_PER_FRAME];
+	double temp1, temp2, tgamma, atemp;
+	int i, j;
+
+	/*-- cast --*/
+	/*-- begin --*/
+	tgamma = gamma;
+
+	for (uint32_t i = 0; i < u32SampleCnt; i++)
+	{
+		temp1 = 0.0;
+		temp2 = 0.0;
+		gamma = tgamma;
+		for (uint32_t j = 1; j <= ARorder; j++)
+		{
+			if (i == j - 1)
+			{
+				break;
+			}
+			atemp = alpha[j];
+			temp1 = temp1 - atemp * qdata[i - j];
+			temp2 = temp2 - gamma * atemp * qdata[i - j];
+			gamma = gamma * tgamma;
+		}
+		qdata[i] = xdata[i] + temp2;
+		xdata[i] = qdata[i] - temp1;
+	}
+}
+
+static _Bool VoiceChangerEngine(const double dfpInputData[], uint32_t u32SampleCnt, double dfpPulses[], double dfpOutPutData[])
+{
+	double AutoCor[DEF_MAX_SAMPLES_PER_FRAME];
+	double pWorkData[DEF_MAX_SAMPLES_PER_FRAME * 10];
+	double dfpLPC[DEF_AR_ODER + 1]; /** 最初の 1.0 と16 */
+	//double dfpLSP[DEF_AR_ODER + 1];
+	double Corcor[DEF_MAX_SAMPLES_PER_FRAME];
+	double ImpulseResponse[DEF_MAX_SAMPLES_PER_FRAME];
+
+	if (u32SampleCnt > DEF_MAX_SAMPLES_PER_FRAME)
+	{
+		return false;
+	}
+
+	/** Get LPC Value */
+	if (CalcAutocorrelation(dfpInputData, u32SampleCnt, pWorkData, AutoCor) == false)
+	{
+		printf("[%s (%d)]CalcAutocorrelation NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+	if (LevinsonDurbinMethod(AutoCor, u32SampleCnt, pWorkData, dfpLPC, DEF_AR_ODER) == false)
+	{
+		printf("[%s (%d)]CalcAutocorrelation NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+	WF(dfpInputData, dfpLPC, u32SampleCnt, DEF_AR_ODER, 0.92);
+
+	/** Get Pulses */
+	if (GetImpulseResponse(dfpLPC, DEF_AR_ODER, u32SampleCnt, ImpulseResponse) == false)
+	{
+		printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+	if (CalcAutocorrelation(ImpulseResponse, u32SampleCnt, pWorkData, AutoCor) == false)
+	{
+		printf("[%s (%d)]CalcAutocorrelation NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+	if (CalcCrosscorrelation(ImpulseResponse, dfpInputData, u32SampleCnt, Corcor) == false)
+	{
+		printf("[%s (%d)]CalcCrosscorrelation NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+	if (PulseSearch(AutoCor, Corcor, u32SampleCnt, u32SampleCnt / 4, dfpPulses) == false)
+	{
+		printf("[%s (%d)]PulseSearch NG\n", __FUNCTION__, __LINE__);
+		return false;
+	}
+#if 1
+	for(uint32_t i=0;i<u32SampleCnt/2;i++){
+		dfpPulses[i] = (dfpPulses[2*i] + dfpPulses[2*i+1]);
+	}
+	for(uint32_t i=0;i<u32SampleCnt/2;i++){
+		dfpPulses[i + (u32SampleCnt / 2)] = dfpPulses[i];
+	}
+#endif
+	I_filter_2(dfpPulses, dfpLPC, dfpOutPutData, u32SampleCnt, DEF_AR_ODER);
+
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	char szInputWavFile[256];
@@ -96,15 +195,12 @@ int main(int argc, char *argv[])
 	printf("stFmtChunk.u16bitsPerSample  = %u\n", stFmtChunk.u16bitsPerSample);
 
 	stWaveFile_t *outfp = WavFileWriteFmtChunk(szOutputWavFile[0], &stFmtChunk);
-	if(outfp == NULL){
+	if (outfp == NULL)
+	{
 		printf("[%s (%d)] WavFileGetFmtChunk NG\n", __FUNCTION__, __LINE__);
 		return 0;
 	}
-	stWaveFile_t *outfp2 = WavFileWriteFmtChunk(szOutputWavFile[1], &stFmtChunk);
-	if(outfp2 == NULL){
-		printf("[%s (%d)] WavFileGetFmtChunk NG\n", __FUNCTION__, __LINE__);
-		return 0;
-	}
+
 	uint32_t u32ChunkSize = 0;
 	stWaveFile_t *fp = WavFileSearchTopOfDataChunk(szInputWavFile, &u32ChunkSize);
 
@@ -115,119 +211,82 @@ int main(int argc, char *argv[])
 	}
 	printf("[%s (%d)] u32ChunkSize = %lu bytes\n", __FUNCTION__, __LINE__, u32ChunkSize);
 
-	
+	uint8_t u8Buffer2[96000 * 2 * 2];
+	uint32_t u32ReadCnt = 0;
+	double dfpInputData[DEF_MAX_SAMPLES_PER_FRAME] = {0};
+	double dfpOutPutDataHalf[DEF_MAX_SAMPLES_PER_FRAME] = {0};
+
+	uint32_t u32BufferSize = stFmtChunk.u32samplesPerSec * stFmtChunk.u16formatChannel * stFmtChunk.u16bitsPerSample / 8;
+	u32BufferSize /= DEF_NUM_OF_FRAME_PER_SEC; /** 100 msec */
+
 	for (;;)
 	{
-		uint8_t u8Buffer[96000 * 2];
-		uint32_t u32BufferSize = stFmtChunk.u32samplesPerSec * stFmtChunk.u16formatChannel * stFmtChunk.u16bitsPerSample / 8;
-		u32BufferSize /= 50; /** 100 msec */
-		uint64_t br = WavFileGetPCMData(fp, &u32ChunkSize, u8Buffer, u32BufferSize);
 
-		if (br == 0)
+		if (u32ReadCnt < u32BufferSize)
 		{
-			break;
+			uint8_t u8Buffer[96000 * 2];
+			uint64_t br = WavFileGetPCMData(fp, &u32ChunkSize, u8Buffer, u32BufferSize);
+			if (br == 0)
+			{
+				break;
+			}
+			memcpy(&u8Buffer2[u32ReadCnt], u8Buffer, br);
+
+			u32ReadCnt += br;
+			printf("u32ReadCnt = %u\n", u32ReadCnt);
 		}
-		//printf("[%s (%d)] %lu bytes read OK (Remain = %lu)\n", __FUNCTION__, __LINE__, br, u32ChunkSize);
+		else
 		{
-			uint32_t u32SampleCnt = br / sizeof(uint16_t);
-			printf("[%s (%d)] u32SampleCnt = %lu)\n", __FUNCTION__, __LINE__, u32SampleCnt);
-			if(u32SampleCnt <= 3840){
-				double AutoCross[3840];
-				double pInputData[3840];
-				double pWorkData[3840*10];
-				double dfpLPC[DEF_AR_ODER + 1];	/** 最初の 1.0 と16 */
-				double dfpLSP[DEF_AR_ODER + 1];
-				double Corcor[3840];
-				double ImpulseResponse[3840];
-				int16_t *pi16 = u8Buffer;
+			uint32_t u32SampleCnt = u32BufferSize / sizeof(uint16_t);
+			int16_t *pi16samples = (int16_t *)u8Buffer2;
+			/** Applied Windows Function */
+			for (uint32_t i = 0; i < u32SampleCnt; i++)
+			{
+				dfpInputData[i] = pi16samples[i];
+			}
+			u32ReadCnt -= u32BufferSize / 2;
+			memcpy(u8Buffer2, &u8Buffer2[u32BufferSize / 2], u32ReadCnt);
 
-				/** LPC alpha */
-				for (uint32_t i = 0; i < u32SampleCnt; i++)
+			{
+				window(BARTLETT, dfpInputData, u32SampleCnt, 0.5);
+
+				//printf("[%s (%d)] %lu bytes read OK (Remain = %lu)\n", __FUNCTION__, __LINE__, br, u32ChunkSize);
 				{
-					pInputData[i] = pi16[i];
-				}
-				CalcAutocorrelation(pInputData, u32SampleCnt, pWorkData, AutoCross);
-#if 0
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f ", AutoCross[i]);
-				}
-				printf("\n");
-#endif
-				LevinsonDurbinMethod(AutoCross, u32SampleCnt, pWorkData, dfpLPC, DEF_AR_ODER);
-				//lpc(pInputData, u32SampleCnt, dfpLPC, DEF_AR_ODER, 1e-6);
-#if 0
-				for(uint32_t i=0;i<(DEF_AR_ODER + 1);i++){
-					printf("%f ", dfpLPC[i]);
-				}
-				printf("\n");
-#endif
-#if 0
-				lpc2lsp(dfpLPC, dfpLSP, DEF_AR_ODER, 128, 4, 1e-6);
-				for(uint32_t i=0;i<DEF_AR_ODER;i++){
-					printf("%f ", dfpLSP[i]);
-				}
-				printf("\n");
-#endif
-				if(GetImpulseResponse(dfpLPC, DEF_AR_ODER, u32SampleCnt, ImpulseResponse) == false){
-					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
-					break;
-				}
-#if 0
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f,", ImpulseResponse[i]);
-				}
-				printf("\n\n");
-#endif	
-				CalcAutocorrelation(ImpulseResponse, u32SampleCnt, pWorkData, AutoCross);
-#if 0
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f,", AutoCross[i]);
-				}
-				printf("\n\n");
-#endif				
-				if(CalcCrosscorrelation(ImpulseResponse, pInputData, u32SampleCnt, Corcor) == false){
-					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
-					break;
-				}
-#if 0
+					double dfpOutPutData[DEF_MAX_SAMPLES_PER_FRAME];
+					double dfpPulses[DEF_MAX_SAMPLES_PER_FRAME];
 
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f ", Corcor[i]);
-				}
-				printf("\n");
-#endif
-				double Pulses[3840];
-				if(PulseSearch(AutoCross, Corcor, u32SampleCnt,  u32SampleCnt / 4, Pulses) == false){
-					printf("[%s (%d)]GetImpulseResponse NG\n", __FUNCTION__, __LINE__);
-					break;
-				}
-#if 0
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					printf("%f ", Pulses[i]);
-				}
-				printf("\n");
-#endif
+					if (VoiceChangerEngine(dfpInputData, u32SampleCnt, dfpPulses, dfpOutPutData) == false)
+					{
+						printf("[%s (%d)] VoiceChangerEngine NG\n", __FUNCTION__, __LINE__);
+						continue;
+					}
 
-				double dfpOutPutData[3840];	
-				I_filter_2(Pulses, dfpLPC, dfpOutPutData, u32SampleCnt, DEF_AR_ODER);
-				
-				int16_t i16data[3840];
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					i16data[i] = (int16_t)dfpOutPutData[i];
+					uint32_t u32Half = u32SampleCnt / 2;
+					for (uint32_t i = 0; i < u32Half; i++)
+					{
+						dfpOutPutDataHalf[i] = dfpOutPutDataHalf[i + u32Half];
+						dfpOutPutDataHalf[i + u32Half] = 0;
+					}
+					for (uint32_t i = 0; i < u32SampleCnt; i++)
+					{
+						dfpOutPutDataHalf[i] += dfpOutPutData[i];
+					}
 				}
-				WavFileWritePCMData(outfp, i16data, u32SampleCnt*sizeof(int16_t), &u32ChunkSize);
-				for(uint32_t i=0;i<u32SampleCnt;i++){
-					i16data[i] = (int16_t)Pulses[i];
-				}
-				uint32_t dummy;
-				WavFileWritePCMData(outfp2, i16data, u32SampleCnt*sizeof(int16_t), &dummy);
-				
+			}
 
+			{
+				uint32_t u32WriteSamples = u32SampleCnt * sizeof(int16_t);
+				u32WriteSamples /= 2; /** 窓関数かけたのはンうbンずつ */
+				int16_t i16data[DEF_MAX_SAMPLES_PER_FRAME];
+				for (uint32_t i = 0; i < u32WriteSamples; i++)
+				{
+					i16data[i] = (int16_t)dfpOutPutDataHalf[i];
+				}
+				WavFileWritePCMData(outfp, (uint8_t *)i16data, u32WriteSamples, &u32ChunkSize);
 			}
 		}
 	}
 	WavFileWriteClose(outfp, u32ChunkSize);
-	WavFileWriteClose(outfp2, u32ChunkSize);
 	WavFileClose(fp);
 	return 0;
 }

@@ -11,6 +11,7 @@ add_executable(lsp_test.exe
   ./source/SPTK/src/lpc2c/_lpc2c.c
   ./source/SPTK/src/acorr/_acorr.c
   ./source/SPTK/src/levdur/_levdur.c
+  ./source/SPTK/src/window/_window.c
   ./source/SPTK/lib/getmem.c
   ./source/SPTK/lib/movem.c
   ./source/SPTK/lib/fillz.c
