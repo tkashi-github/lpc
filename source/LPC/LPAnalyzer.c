@@ -219,11 +219,10 @@ _Bool GetImpulseResponse(const double alpha[], uint32_t ARorder, uint32_t u32Num
 	return true;
 }
 
-//static double s_dfpTemp[64] = {0};
+static double s_dfpTemp[64] = {0};
 
 void I_filter_2(const double dfpInData[], const double dfpAlpha[], double dfpOutput[], uint32_t u32SampleCnt, uint32_t ARorder)
 {
-	//dfpOutput[0] = dfpInData[0];
 	for (uint32_t n = 0; n < u32SampleCnt; n++)
 	{
 		dfpOutput[n] = dfpInData[n];
@@ -234,16 +233,13 @@ void I_filter_2(const double dfpInData[], const double dfpAlpha[], double dfpOut
 			{
 				break;
 			}
-			dfpSum -= dfpAlpha[i] * dfpOutput[n - i];
-			//dfpSum -= dfpAlpha[i] * s_dfpTemp[i];
+			dfpSum -= dfpAlpha[i] * s_dfpTemp[i];
 		}
 		dfpOutput[n] += dfpSum;
-#if 0		
 		for(uint32_t i=ARorder;i>1;i--){
 			s_dfpTemp[i] = s_dfpTemp[i - 1];
 		}
 		s_dfpTemp[1] = dfpOutput[n];
-#endif
 	}
 }
 
