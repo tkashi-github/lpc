@@ -276,26 +276,25 @@ int main(int argc, char *argv[])
 			memcpy(&u8Buffer2[u32ReadCnt], u8Buffer, br);
 
 			u32ReadCnt += br;
+			printf("[%s (%d)] u32ReadCnt = %lu\n", __FUNCTION__, __LINE__, u32ReadCnt);
 		}
 		else
 		{
 			uint32_t u32SampleCnt = u32ReadCnt / sizeof(uint16_t);
 			int16_t *pi16samples = (int16_t *)u8Buffer2;
-			uint32_t u32ZeroCrossPosition = SearchZeroCrossPosition(pi16samples, u32SampleCnt);
-			if(u32ZeroCrossPosition != 0){
-				printf("<%u/%u>\n", u32ZeroCrossPosition, u32SampleCnt);
-				u32SampleCnt = u32ZeroCrossPosition;
-			}
+			u32SampleCnt /= 2;
+			printf("[%s (%d)] u32SampleCnt = %lu\n", __FUNCTION__, __LINE__,  u32SampleCnt);
 
 			/** Applied Windows Function */
 			for (uint32_t i = 0; i < u32SampleCnt; i++)
 			{
 				dfpInputData[i] = pi16samples[i];
 			}
-			u32ReadCnt -= (u32SampleCnt* sizeof(int16_t)) / 1; /** ちょっと細工 */
-			memcpy(u8Buffer2, &u8Buffer2[u32SampleCnt * sizeof(int16_t) / 1], u32ReadCnt);
+			u32ReadCnt -= (u32SampleCnt* sizeof(int16_t));
+			memcpy(u8Buffer2, &u8Buffer2[u32SampleCnt * sizeof(int16_t)], u32ReadCnt);
+			printf("[%s (%d)] u32ReadCnt = %lu\n", __FUNCTION__, __LINE__,  u32ReadCnt);
 
-			{	
+			{
 				double dfpOutPutData[DEF_MAX_SAMPLES_PER_FRAME];
 				double dfpPulses[DEF_MAX_SAMPLES_PER_FRAME];
 
