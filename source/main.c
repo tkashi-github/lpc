@@ -85,7 +85,7 @@ void WF(double xdata[], double alpha[], uint32_t u32SampleCnt, uint32_t ARorder,
 static _Bool MultiPulseProcessing(const double dfpInputData[], uint32_t u32SampleCnt, double dfpLPC[], double dfpPulses[], double dfpOutPutData[])
 {
 	double AutoCor[DEF_MAX_SAMPLES_PER_FRAME];
-	double pWorkData[DEF_MAX_SAMPLES_PER_FRAME * 10];
+	double pWorkData[DEF_MAX_SAMPLES_PER_FRAME * 20];
 	//double dfpLSP[DEF_AR_ODER + 1];
 	double Corcor[DEF_MAX_SAMPLES_PER_FRAME];
 	double ImpulseResponse[DEF_MAX_SAMPLES_PER_FRAME];
@@ -129,7 +129,7 @@ static _Bool MultiPulseProcessing(const double dfpInputData[], uint32_t u32Sampl
 		printf("[%s (%d)]CalcCrosscorrelation NG\n", __FUNCTION__, __LINE__);
 		return false;
 	}
-	if (PulseSearch(AutoCor, Corcor, u32SampleCnt, u32SampleCnt/4, dfpPulses) == false)
+	if (PulseSearch(AutoCor, Corcor, u32SampleCnt, u32SampleCnt/8, dfpPulses) == false)
 	{
 		printf("[%s (%d)]PulseSearch NG\n", __FUNCTION__, __LINE__);
 		return false;
@@ -170,21 +170,7 @@ static _Bool VoiceChangerEngine(const double dfpInputData[], uint32_t u32SampleC
 	return true;
 }
 
-static uint32_t SearchZeroCrossPosition(const int16_t pi16samples[], uint32_t u32SampleCnt){
-	uint32_t u32ZeroCrossPosition = 0;
 
-	for(uint32_t i=(u32SampleCnt-1);i>1;i--){
-		if(pi16samples[i] == 0){
-			u32ZeroCrossPosition = i;
-			break;
-		}
-		if((pi16samples[i] * pi16samples[i-1]) < 0){
-			u32ZeroCrossPosition = i;
-			break;
-		}
-	}
-	return u32ZeroCrossPosition;
-}
 
 int main(int argc, char *argv[])
 {
@@ -282,14 +268,17 @@ int main(int argc, char *argv[])
 		{
 			uint32_t u32SampleCnt = u32ReadCnt / sizeof(uint16_t);
 			int16_t *pi16samples = (int16_t *)u8Buffer2;
-			u32SampleCnt /= 2;
 			printf("[%s (%d)] u32SampleCnt = %lu\n", __FUNCTION__, __LINE__,  u32SampleCnt);
 
-			/** Applied Windows Function */
+			/** 前半分絵の詰め */
 			for (uint32_t i = 0; i < u32SampleCnt; i++)
 			{
-				dfpInputData[i] = pi16samples[i];
+				dfpInputData[i + u32SampleCnt] = pi16samples[i];
 			}
+
+			/** これで2売町のデータできた */
+
+			/** 読み出し残数の測定 */
 			u32ReadCnt -= (u32SampleCnt* sizeof(int16_t));
 			memcpy(u8Buffer2, &u8Buffer2[u32SampleCnt * sizeof(int16_t)], u32ReadCnt);
 			printf("[%s (%d)] u32ReadCnt = %lu\n", __FUNCTION__, __LINE__,  u32ReadCnt);
@@ -298,6 +287,7 @@ int main(int argc, char *argv[])
 				double dfpOutPutData[DEF_MAX_SAMPLES_PER_FRAME];
 				double dfpPulses[DEF_MAX_SAMPLES_PER_FRAME];
 
+				/** ここでだす */
 				if (VoiceChangerEngine(dfpInputData, u32SampleCnt, dfpPulses, dfpOutPutData) == false)
 				{
 					printf("[%s (%d)] VoiceChangerEngine NG\n", __FUNCTION__, __LINE__);
@@ -310,6 +300,12 @@ int main(int argc, char *argv[])
 					i16data[i] = (int16_t)dfpOutPutData[i];
 				}
 				WavFileWritePCMData(outfp, (uint8_t *)i16data, (u32SampleCnt*sizeof(int16_t) / 1), &u32ChunkSize);
+
+				/** 前半分絵の詰め */
+				for (uint32_t i = 0; i < u32SampleCnt; i++)
+				{
+					dfpInputData[i] = pi16samples[i];
+				}
 			}
 		}
 	}

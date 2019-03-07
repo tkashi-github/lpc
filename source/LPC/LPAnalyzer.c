@@ -74,9 +74,9 @@ _Bool CalcAutocorrelation(const double InputData[], uint32_t u32NumOfSamples, do
 	for (uint32_t i = 0; i < u32NumOfSamples; i++)
 	{
 		temp = 0.0;
-		for (uint32_t n = i; n < u32NumOfSamples; n++)
+		for (uint32_t n = 0; n < u32NumOfSamples; n++)
 		{
-			temp += dfpWork[n] * dfpWork[n - i];
+			temp += dfpWork[n + i] * dfpWork[n];
 		}
 		OutputData[i] = temp / (double)u32NumOfSamples;
 	}
@@ -109,9 +109,9 @@ _Bool CalcCrosscorrelation(const double InputImpulse[], const double InputSample
 	for (uint32_t i = 0; i < u32NumOfSamples; i++)
 	{
 		temp = 0.0;
-		for (uint32_t n = i; n < u32NumOfSamples; n++)
+		for (uint32_t n = 0; n < u32NumOfSamples; n++)
 		{
-			temp += InputSamples[n] * InputImpulse[n - i];
+			temp += InputSamples[n+i] * InputImpulse[n];
 		}
 		OutputData[i] = temp / (double)u32NumOfSamples;
 	}
